@@ -4,6 +4,63 @@ A static Python deobfuscator for **Kebabfuscator v1** — a Lua/Luau obfuscator 
 
 ---
 
+## How It Works
+
+The deobfuscator operates across 5 stages:
+
+```
+┌──────────────────────────────┐
+│  Kebabfuscator v1 Script     │
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│ 1. Identifier                │ ➔ Maps per-run randomized names to stable
+│    Canonicalization          │   canonical identifiers across all runs
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│ 2. Constants Extraction      │ ➔ Locates dispatch keys, cipher seeds,
+│                              │   and string-table blob boundaries
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│ 3. String Table Decoding     │ ➔ Runs base-85 decode + stream cipher
+│                              │   to recover all encrypted string literals
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│ 4. VM Bytecode Decoding      │ ➔ Disassembles the embedded VM instruction
+│                              │   stream and reconstructs expressions
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│ 5. Luau Lifting              │ ➔ Translates decoded bytecode back to
+│                              │   readable Luau with restored control flow
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│   Clean Luau Source Code     │
+└──────────────────────────────┘
+```
+
+1. **Identifier Canonicalization** (`names.py`): Every obfuscation run regenerates internal identifiers — the 32 seed constants, crypto helpers, VM register names — while keeping the program structure identical. This stage anchors on fixed structural patterns to recognize each identifier's role and rewrites them to stable canonical names (`jm1..jm32`, `oE55`, `Nx58`, `c435`, etc.) so the rest of the pipeline operates on consistent symbols regardless of which run produced the input.
+
+2. **Constants Extraction** (`keb.py`): Scans the canonicalized source to locate the dispatch key (`NS14`), cipher seeds, digit tables, and the boundaries of each encrypted string-table blob. These constants vary per protected script and are extracted dynamically — no hardcoded per-sample map is needed.
+
+3. **String Table Decoding** (`keb.py`): Reimplements Kebabfuscator's crypto stack in pure Python — base-85 decoding (`oE55`), index folding (`CA56`), and XOR stream cipher (`Nx58`) — to statically decrypt every string blob without executing any Lua. The encrypted decode loops in the source are then replaced with plain Lua string assignments.
+
+4. **VM Bytecode Decoding** (`vm.py`, `newdeob.py`): Decodes the embedded VM instruction stream: extracts opcodes from the dispatcher (`c435`), maps them via the dispatch key, and reconstructs the operand expressions. A Lua expression evaluator handles the arithmetic and bitwise folding the obfuscator uses to obscure immediate values.
+
+5. **Luau Lifting** (`lift.py`): Translates the decoded VM bytecode back to readable Luau source. Recovers control flow structures (branches, loops), reassembles closures and upvalues, and emits clean output that targets the Luau runtime and Roblox API environment the original script was written for.
+
+---
+
 ## What It Does
 
 Kebabfuscator v1 protects Lua/Luau scripts by:
