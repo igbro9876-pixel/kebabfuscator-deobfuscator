@@ -1,6 +1,69 @@
 # Kebabfuscator Deobfuscator
 
+![Python](https://img.shields.io/badge/python-3.8%2B-blue?logo=python&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-green)
+![No dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
+![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
+
 A static Python deobfuscator for **Kebabfuscator v1** — a Lua/Luau obfuscator that wraps scripts inside a custom virtual machine and encrypts string tables. This tool recovers the original logic without executing the obfuscated code.
+
+---
+
+## Demo
+
+**Input** — Kebabfuscator v1 protected script (string table encrypted, VM-wrapped):
+
+```lua
+--kebabfuscator v1
+local jm1 = bit32.band((7843 * 17 + 1 * 16 - 12), 1048575)
+local jm2 = string.byte(string.char((2 * 41 + 3 * 13 - 12)))
+-- ... 32 obfuscated seed constants ...
+local pN65 = {oE55("..."), oE55("...")}  -- encrypted string blobs
+local Z654 = {oE55("...")}               -- VM bytecode
+-- dispatcher with 100+ opcode handlers ...
+```
+
+**Default mode** — string tables recovered, VM wrapper retained:
+
+```
+$ python deobfuscator/deobfuscator.py samples/sample.lua
+Deobfuscated samples/sample.lua -> samples/sample.deobfuscated.lua (14 blobs, 287 strings)
+```
+
+```lua
+-- oh my days deobfuscated this obfuscator with this special deobfuscator so insane
+local pN65 = {
+    {"Highlight", "Enabled", "FillColor", ...},
+    {"Players", "LocalPlayer", "Character", ...},
+    -- 287 plaintext strings recovered
+}
+```
+
+**Lift mode** — full decompilation to readable Luau:
+
+```
+$ python deobfuscator/deobfuscator.py samples/sample.lua --lift
+Deobfuscated samples/sample.lua -> samples/sample.lifted.lua (14 blobs, 287 strings)
+```
+
+```lua
+-- oh my days deobfuscated this obfuscator with this special deobfuscator so insane
+local a = {}
+local b = function()
+    if _G.lune ~= nil or _G.lute ~= nil then
+        return true
+    end
+    local ok = pcall(function()
+        local fs = require("@lune/fs")
+        return fs
+    end)
+    if ok then return true end
+    if type(game) ~= "userdata" or type(workspace) ~= "userdata" then
+        return true
+    end
+    -- ... full Luau source continues
+end
+```
 
 ---
 
@@ -58,6 +121,8 @@ The deobfuscator operates across 5 stages:
 4. **VM Bytecode Decoding** (`vm.py`, `newdeob.py`): Decodes the embedded VM instruction stream: extracts opcodes from the dispatcher (`c435`), maps them via the dispatch key, and reconstructs the operand expressions. A Lua expression evaluator handles the arithmetic and bitwise folding the obfuscator uses to obscure immediate values.
 
 5. **Luau Lifting** (`lift.py`): Translates the decoded VM bytecode back to readable Luau source. Recovers control flow structures (branches, loops), reassembles closures and upvalues, and emits clean output that targets the Luau runtime and Roblox API environment the original script was written for.
+
+For the full technical breakdown — cipher math, opcode mapping, control flow reconstruction, and the VM instruction format — see [TECHNICAL.md](TECHNICAL.md).
 
 ---
 
@@ -162,8 +227,15 @@ tests/
 ## Running the Tests
 
 ```bash
-# Full unittest suite (from project root)
+# Linux / macOS
+./run_tests.sh
+
+# Or directly (any platform)
 python -m unittest discover -s tests -v
+
+# make shortcut
+make test
+make test-verbose
 
 # Individual diagnostics
 python tests/test_all.py

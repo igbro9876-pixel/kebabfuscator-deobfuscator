@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "kebabfuscator-deobfuscator"
+version = "1.0.0"
+description = "Static Python deobfuscator for Kebabfuscator v1 Lua/Luau scripts"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.8"
+keywords = ["lua", "luau", "roblox", "deobfuscator", "reverse-engineering"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Security",
+    "Topic :: Software Development :: Disassemblers",
+]
+
+[project.scripts]
+kebab-deob = "deobfuscator.deobfuscator:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["deobfuscator*"]
